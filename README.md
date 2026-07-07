@@ -1,5 +1,7 @@
 # SysMon — Windows 系统监控工具
 
+[English](README.en.md) | **中文**
+
 轻量级 Windows 桌面系统监控工具，悬浮置顶显示 CPU、内存、网速，支持任务栏内嵌网速条。
 
 ## 功能特性
