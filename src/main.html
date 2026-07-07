@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles/variables.css" />
+    <link rel="stylesheet" href="styles/main.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SysMon</title>
+    <script type="module" src="main.js" defer></script>
+  </head>
+  <body data-theme="light">
+    <div class="monitor-panel">
+      <div class="metric">
+        <span class="label">CPU</span>
+        <span class="value" id="cpu-value">0%</span>
+        <div class="bar"><div class="bar-fill" id="cpu-bar"></div></div>
+      </div>
+      <div class="metric">
+        <span class="label">内存</span>
+        <span class="value" id="mem-value">0 GB / 0 GB</span>
+        <div class="bar"><div class="bar-fill" id="mem-bar"></div></div>
+      </div>
+      <div class="metric">
+        <span class="label">GPU</span>
+        <span class="value" id="gpu-value">0%</span>
+        <div class="bar"><div class="bar-fill" id="gpu-bar"></div></div>
+      </div>
+      <div class="metric net">
+        <span class="label">↓ 下行</span>
+        <span class="value" id="net-down-value">0 KB/s</span>
+      </div>
+      <div class="metric net">
+        <span class="label">↑ 上行</span>
+        <span class="value" id="net-up-value">0 KB/s</span>
+      </div>
+    </div>
+    <button id="theme-toggle" class="theme-btn" title="切换主题">☀/🌙</button>
+  </body>
+</html>

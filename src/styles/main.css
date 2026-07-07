@@ -1,0 +1,82 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+  user-select: none;
+  padding: 12px;
+}
+
+.monitor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.metric .label {
+  color: var(--label-color);
+  font-size: 13px;
+  min-width: 60px;
+}
+
+.metric .value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+  flex: 1;
+  text-align: right;
+}
+
+.metric.net .value {
+  color: var(--accent-color);
+}
+
+.bar {
+  height: 4px;
+  background: var(--bar-bg);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--bar-fill-color);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.theme-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.theme-btn:hover {
+  background: var(--accent-color);
+  color: #ffffff;
+}

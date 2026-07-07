@@ -1,0 +1,33 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: transparent;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+.netspeed-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2px 4px;
+}
+
+.netspeed-bar .down {
+  color: #4caf50;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.netspeed-bar .up {
+  color: #f44336;
+  font-size: 12px;
+  font-weight: 600;
+}
