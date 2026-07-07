@@ -19,24 +19,30 @@
                        │   │
          ┌─────────────┘   └──────────────┐
          ▼                                ▼
-  ┌──────────────┐              ┌─────────────────┐
-  │ settings.rs  │              │ start_data_push  │
-  │ (命令+持久化) │              │ _timer()         │
-  └──────┬───────┘              └──┬──────────┬────┘
+  ┌──────────────┐              ┌─────────────────────┐
+  │ settings.rs  │              │ start_data_push      │
+  │ (命令+持久化) │              │ _timer()             │
+  └──────┬───────┘              └──┬──────────┬────────┘
          │                         │          │
          │ 读写 settings.json      │ 调用     │ 调用
          │                         ▼          ▼
          ▼                 ┌────────────┐ ┌──────────┐
   ┌──────────────┐         │ sys_info.rs│ │  gpu.rs  │
   │ AppSettings  │         │ CPU/内存/  │ │ PDH API  │
-  │ {taskbar,    │         │ 网络采集    │ │ GPU采集   │
-  │  always_top} │         └─────┬──────┘ └────┬─────┘
+  │ {taskbar,    │         │ 网络/格式化 │ │ GPU采集   │
+  │  always_top, │         └─────┬──────┘ └────┬─────┘
+  │  net_unit}   │               │             │
   └──────────────┘               │             │
                                  ▼             ▼
                             ┌─────────────────────┐
                             │   commands.rs       │
-                            │ SystemInfo /        │
-                            │ NetSpeedInfo 结构体  │
+                            │ SystemInfo {        │
+                            │   cpu, mem_*, gpu,  │
+                            │   net_down/up,      │
+                            │   net_down/up_str } │
+                            │ NetSpeedInfo {      │
+                            │   down, up,         │
+                            │   down_str, up_str }│
                             └─────────────────────┘
 ```
 
@@ -52,7 +58,9 @@
            ▼               ▼                     ▼
     ┌────────────┐  ┌────────────┐       ┌────────────┐
     │ main 窗口  │  │taskbar 窗口│       │settings 窗口│
-    │ (静态配置) │  │ (动态创建) │       │ (动态创建)  │
+    │ 230×46     │  │ 120×32     │       │ 800×600    │
+    │ 透明+圆角  │  │ Win32嵌入  │       │            │
+    │ 置顶+无框  │  │ 默认隐藏   │       │            │
     └─────┬──────┘  └─────┬──────┘       └─────┬──────┘
           │               │                     │
     监听事件:        监听事件:             监听事件:
@@ -65,6 +73,7 @@
           │               │              invoke 命令:
           │               │              get/set_taskbar_visible
           │               │              get/set_always_on_top
+          │               │              get/set_net_unit
           │               │                     │
           ▼               ▼                     ▼
     ┌─────────────────────────────────────────────────┐
@@ -87,11 +96,37 @@
    │   │   └─→ cleanup_taskbar_window() + gpu cleanup + exit
    │   │
    │   └─→ 创建/显示 settings 窗口
-   │       (WebviewWindowBuilder, 300×240, skip_taskbar)
+   │       (WebviewWindowBuilder, 800×600, skip_taskbar)
    │
    └─→ 显示 main 窗口 + set_focus
 
 左键点击托盘 → 显示 main 窗口
+```
+
+### 1.4 主窗口圆角实现
+
+```
+tauri.conf.json                    lib.rs                           CSS
+┌────────────────┐    ┌──────────────────────────────┐    ┌─────────────────┐
+│ transparent:   │    │ set_main_window_rounded_     │    │ main.css:       │
+│   true         │    │   region()                   │    │  border-radius: │
+│ shadow: false  │    │                              │    │    10px         │
+│ decorations:   │    │ GetWindowRect(hwnd)          │    │                 │
+│   false        │    │ → width, height              │    │ public.css:    │
+│                │    │                              │    │  border-radius: │
+│                │    │ CreateRoundRectRgn(          │    │    12px         │
+│                │    │   0, 0, w+1, h+1,            │    │                 │
+│                │    │   16, 16)                    │    │ body:           │
+│                │    │                              │    │  background:    │
+│                │    │ SetWindowRgn(hwnd,           │    │   var(--bg-rgba)│
+│                │    │   region, true)              │    │  ← rgba 半透明  │
+└────────────────┘    └──────────────────────────────┘    └─────────────────┘
+       │                        │                                │
+       └────────────┬───────────┘                                │
+                    ▼                                             │
+          HWND 被裁剪为圆角矩形                                    │
+          角落外区域真正透明                                       │
+          CSS border-radius 裁剪 HTML 内容 ◄──────────────────────┘
 ```
 
 ## 2. 数据流图
@@ -123,33 +158,47 @@
 │ 网卡       │  │ 网卡       │      │            │
 └──────┬─────┘  └──────┬─────┘      └──────┬─────┘
        │               │                   │
-       └───────┬───────┘                   │
-               │ ←─────────────────────────┘
-               ▼
-      ┌─────────────────┐
-      │  SystemInfo {}  │
-      │  cpu, mem_used, │
-      │  mem_total,     │
-      │  mem_pct, gpu,  │
-      │  net_down,      │
-      │  net_up         │
-      └────────┬────────┘
-               │
-               ▼
-      ┌─────────────────┐
-      │  lib.rs         │
-      │  emit_to("main",│
-      │  "sys-info",    │
-      │   SystemInfo)   │
-      └────────┬────────┘
-               │
-               ▼
-      ┌─────────────────┐
-      │  main.js        │
-      │  listen(        │
-      │  "sys-info")    │
-      │  → 更新 DOM     │
-      └─────────────────┘
+       │  读取 net_unit │                   │
+       │  (auto/kb/mb)  │                   │
+       │               │                   │
+       │  ┌────────────┘                   │
+       ▼  ▼                                │
+  ┌──────────────────┐                     │
+  │ format_speed()   │  ←──────────────────┘
+  │ format_speed_    │
+  │   short()        │
+  │                  │
+  │ 根据 unit 格式化  │
+  │ → "1.5 KB/s"     │
+  │ → "1K" (短格式)   │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌─────────────────────────────┐
+  │  SystemInfo {}              │
+  │  cpu, mem_used, mem_total,  │
+  │  mem_pct, gpu,              │
+  │  net_down, net_up,          │
+  │  net_down_str, net_up_str   │
+  └────────┬────────────────────┘
+           │
+           ▼
+  ┌─────────────────┐
+  │  lib.rs         │
+  │  emit_to("main",│
+  │  "sys-info",    │
+  │   SystemInfo)   │
+  └────────┬────────┘
+           │
+           ▼
+  ┌─────────────────┐
+  │  main.js        │
+  │  listen(        │
+  │  "sys-info")    │
+  │                 │
+  │  直接用 *_str   │
+  │  更新 DOM       │
+  └─────────────────┘
 ```
 
 ### 2.2 网速数据流（任务栏窗口）
@@ -160,16 +209,24 @@ sysinfo Networks
        ▼
 sys_info.rs::compute_net_speed()
        │  增量: (当前累计 - PREV_NET_RX) / 时间差
-       │  过滤: Loopback, vEthernet, Hyper-V, docker
+       │  过滤: Loopback, vEthernet, Hyper-V, docker, veth, vnic
        ▼
-NetSpeedInfo { down, up }
+       │  读取 net_unit 设置
+       ▼
+format_speed_short(down, unit)
+       │  auto → B/K/M 自适应
+       │  kb   → "{:.0}K"
+       │  mb   → "{:.1}M"
+       ▼
+NetSpeedInfo { down, up, down_str, up_str }
        │
        ▼
 lib.rs::emit_to("taskbar", "net-speed", NetSpeedInfo)
        │
        ▼
 taskbar.js::listen("net-speed")
-       │  formatSpeedShort(): B → K → M
+       │  直接用 data.down_str / data.up_str
+       │  (前端无格式化逻辑)
        ▼
 DOM 更新: #net-down, #net-up
 ```
@@ -205,6 +262,7 @@ DOM 更新: #net-down, #net-up
    │  [data-theme="light"] { ... }  │
    │  [data-theme="dark"]  { ... }  │
    │  CSS 变量自动切换               │
+   │  --bg-rgba: rgba(...)          │
    └────────────────────────────────┘
 ```
 
@@ -219,34 +277,42 @@ DOM 更新: #net-down, #net-up
        ▼
 invoke('set_taskbar_visible', { visible: true })
 invoke('set_always_on_top', { enabled: true })
+invoke('set_net_unit', { unit: "auto" })
        │
        ▼
-┌──────────────────────────┐
-│ settings.rs              │
-│ set_taskbar_visible()    │
-│ set_always_on_top()      │
-│                          │
-│ 1. 读取现有 settings.json│
-│ 2. 合并新值              │
-│ 3. 写回 settings.json    │
-│ 4. 立即应用 (hide/show   │
-│    window, set_always_   │
-│    on_top)               │
-└──────────┬───────────────┘
+┌──────────────────────────────┐
+│ settings.rs                  │
+│ set_taskbar_visible()        │
+│ set_always_on_top()          │
+│ set_net_unit()               │
+│                              │
+│ 1. 读取现有 settings.json    │
+│ 2. 合并新值                  │
+│ 3. 写回 settings.json        │
+│ 4. 立即应用 (hide/show,      │
+│    set_always_on_top)        │
+│    (net_unit 无即时应用,     │
+│     下个推送周期自动生效)     │
+└──────────┬───────────────────┘
            │
            ▼
-┌──────────────────────────┐
-│ %APPDATA%\com.sysmon.app\│
-│ settings.json            │
-│ {                        │
-│   "taskbar_visible":true,│
-│   "always_on_top":true   │
-│ }                        │
-└──────────────────────────┘
+┌──────────────────────────────┐
+│ %APPDATA%\com.sysmon.app\    │
+│ settings.json                │
+│ {                            │
+│   "taskbar_visible": false,  │
+│   "always_on_top": true,     │
+│   "net_unit": "auto"         │
+│ }                            │
+└──────────────────────────────┘
 
 启动时:
-lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
-       → apply_always_on_top_setting() → 读 settings.json → 应用
+lib.rs → apply_taskbar_setting()      → 读 settings.json → 隐藏/显示
+       → apply_always_on_top_setting() → 读 settings.json → set_always_on_top
+       → (net_unit 无启动 apply, 由 timer 每周期读取)
+
+运行时:
+start_data_push_timer() → get_net_unit_runtime() → 每个 tick 读取当前单位
 ```
 
 ## 3. 任务栏嵌入流程
@@ -295,6 +361,11 @@ lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
     │ 变化则重新定位       │
     └─────────────────────┘
 
+启动后:
+    settings::apply_taskbar_setting()
+    → 如果 taskbar_visible == false (默认)
+    → 隐藏 taskbar 窗口
+
 退出时:
     cleanup_taskbar_window()
     → SetParent 恢复
@@ -305,14 +376,16 @@ lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
 
 ### 4.1 Rust 依赖
 
-| Crate | 用途 | 使用模块 |
-|-------|------|----------|
-| `tauri` (v2) | 桌面框架 | lib.rs, tray.rs, taskbar_window.rs, settings.rs |
-| `tauri-plugin-opener` | 打开外部链接 | lib.rs |
-| `sysinfo` (0.33) | CPU/内存/网络 | sys_info.rs |
-| `serde` / `serde_json` | 序列化 | commands.rs, settings.rs |
-| `tokio` | 异步定时器 | lib.rs |
-| `windows` (0.62) | Win32 API | gpu.rs, taskbar_window.rs |
+| Crate | 版本 | 用途 | 使用模块 |
+|-------|------|------|----------|
+| `tauri` | v2 | 桌面框架 | lib.rs, tray.rs, taskbar_window.rs, settings.rs |
+| `tauri-plugin-opener` | v2 | 打开外部链接 | lib.rs |
+| `sysinfo` | 0.33 | CPU/内存/网络 | sys_info.rs |
+| `serde` / `serde_json` | 1 | 序列化 | commands.rs, settings.rs |
+| `tokio` | 1 | 异步定时器 | lib.rs |
+| `windows` | **0.61** | Win32 API | gpu.rs, taskbar_window.rs, lib.rs |
+
+> **版本约束**：`windows` crate 必须用 0.61，与 `tauri-runtime` 内部版本一致，否则 `HWND` 类型不匹配。
 
 ### 4.2 Windows API 使用
 
@@ -325,23 +398,37 @@ lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
 | `GetWindowRect` / `MoveWindow` | taskbar_window.rs | 窗口定位 |
 | `GetDpiForWindow` | taskbar_window.rs | DPI 感知 |
 | `SetWindowPos` | taskbar_window.rs | HWND_TOPMOST 置顶 |
+| `CreateRoundRectRgn` | lib.rs | 创建圆角区域（主窗口圆角） |
+| `SetWindowRgn` | lib.rs | 裁剪窗口为圆角区域 |
+| `GetWindowRect` | lib.rs | 获取窗口尺寸（圆角计算用） |
 
 ### 4.3 Tauri 事件清单
 
 | 事件名 | 发送方 | 接收方 | Payload |
 |--------|--------|--------|---------|
-| `sys-info` | lib.rs (Rust) | main 窗口 | `SystemInfo` |
-| `net-speed` | lib.rs (Rust) | taskbar 窗口 | `NetSpeedInfo` |
+| `sys-info` | lib.rs (Rust) | main 窗口 | `SystemInfo`（含 `net_down_str`/`net_up_str`） |
+| `net-speed` | lib.rs (Rust) | taskbar 窗口 | `NetSpeedInfo`（含 `down_str`/`up_str`） |
 | `theme-changed` | settings.js (前端) | main + taskbar 窗口 | `string` ("light"/"dark") |
 
 ### 4.4 Tauri 命令清单
 
-| 命令名 | 定义位置 | 调用方 | 返回值 |
-|--------|----------|--------|--------|
-| `get_taskbar_visible` | settings.rs | settings.js | `bool` |
-| `set_taskbar_visible` | settings.rs | settings.js | `()` |
-| `get_always_on_top` | settings.rs | settings.js | `bool` |
-| `set_always_on_top` | settings.rs | settings.js | `()` |
+| 命令名 | 定义位置 | 调用方 | 返回值 | 说明 |
+|--------|----------|--------|--------|------|
+| `get_taskbar_visible` | settings.rs | settings.js | `bool` | 默认 `false` |
+| `set_taskbar_visible` | settings.rs | settings.js | `()` | 立即隐藏/显示 taskbar 窗口 |
+| `get_always_on_top` | settings.rs | settings.js | `bool` | 默认 `true` |
+| `set_always_on_top` | settings.rs | settings.js | `()` | 立即设置置顶 |
+| `get_net_unit` | settings.rs | settings.js | `String` | 默认 `"auto"` |
+| `set_net_unit` | settings.rs | settings.js | `()` | 下个推送周期生效 |
+
+### 4.5 设置项一览
+
+| 设置项 | 字段名 | 类型 | 默认值 | 立即生效 | 说明 |
+|--------|--------|------|--------|----------|------|
+| 主题 | (localStorage) | string | "light" | 是 | 通过 emit 同步所有窗口 |
+| 任务栏显示 | `taskbar_visible` | bool | `false` | 是 | 隐藏/显示 taskbar 窗口 |
+| 窗口置顶 | `always_on_top` | bool | `true` | 是 | set_always_on_top |
+| 流量单位 | `net_unit` | string | `"auto"` | 延迟 ≤1.5s | 下个推送周期读取 |
 
 ## 5. 关键技术决策
 
@@ -355,6 +442,12 @@ lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
 | 主题方案 | CSS 变量 | 运行时切换零成本，不需要重新编译 |
 | 窗口拖拽 | 透明覆盖层 | 无边框窗口下实现全区域可拖拽 |
 | 设置存储 | JSON 文件 | 简单直观，无需数据库依赖 |
+| 网速格式化位置 | Rust 端 | 前端零逻辑，切换单位只需后端处理 |
+| 窗口圆角 | Win32 CreateRoundRectRgn | `windowEffects`(acrylic) 填满矩形导致圆角无效，必须裁剪 HWND 区域 |
+| windows crate 版本 | 0.61 | 与 tauri-runtime 内部一致，避免 HWND 类型冲突 |
+| 窗口半透明 | CSS rgba 背景 | `--bg-rgba` 变量，配合 `transparent: true` 实现半透明效果 |
+| 任务栏默认状态 | 隐藏 | 减少干扰，用户按需在设置中开启 |
+| 主窗口尺寸 | 230×46 | 超紧凑双行布局，长时间悬浮不遮挡 |
 
 ## 6. 配置文件关系
 
@@ -362,7 +455,10 @@ lib.rs → apply_taskbar_setting() → 读 settings.json → 应用
 tauri.conf.json
   ├── windows[0] → main 窗口 (label: "main")
   │     ├── url: main.html
+  │     ├── width: 230, height: 46 (超紧凑)
   │     ├── decorations: false (无边框)
+  │     ├── transparent: true (透明窗口)
+  │     ├── shadow: false
   │     ├── skipTaskbar: true (不在任务栏)
   │     └── alwaysOnTop: true (置顶)
   │
@@ -375,10 +471,61 @@ tauri.conf.json
   │     └── core:event:default + core:window:default
   │
   └── capabilities/settings.json → settings 窗口权限
+        ├── core:event:default
         └── core:window:allow-close
+
+CSS 文件关系:
+  public.css (公共 reset + 字体, 无 CSS 变量)
+  variables.css (CSS 变量: 主题色 + --bg-rgba 半透明背景)
+  main.css (主窗口: .drag-overlay, .row, .metric)
+  settings.css (设置窗口: .settings-panel, .setting-item, .theme-option)
+  taskbar.css (任务栏窗口)
 
 运行时配置:
   %APPDATA%/com.sysmon.app/settings.json
-    ├── taskbar_visible: bool
-    └── always_on_top: bool
+    ├── taskbar_visible: bool  (默认 false)
+    ├── always_on_top: bool    (默认 true)
+    └── net_unit: string       (默认 "auto", 可选 "kb"/"mb")
+
+  localStorage (浏览器端):
+    └── theme: string          (默认 "light")
+```
+
+## 7. 数据结构定义
+
+### SystemInfo（推送到 main 窗口）
+
+```rust
+struct SystemInfo {
+    cpu: f32,              // CPU 使用率 %
+    mem_used: u64,         // 已用内存 (bytes)
+    mem_total: u64,        // 总内存 (bytes)
+    mem_pct: f32,          // 内存使用率 %
+    gpu: f32,              // GPU 使用率 %（当前未显示）
+    net_down: f64,         // 下载速度 (bytes/s, 原始值)
+    net_up: f64,           // 上传速度 (bytes/s, 原始值)
+    net_down_str: String,  // 下载速度格式化字符串 ("1.5 KB/s")
+    net_up_str: String,    // 上传速度格式化字符串
+}
+```
+
+### NetSpeedInfo（推送到 taskbar 窗口）
+
+```rust
+struct NetSpeedInfo {
+    down: f64,             // 下载速度 (bytes/s, 原始值)
+    up: f64,               // 上传速度 (bytes/s, 原始值)
+    down_str: String,      // 下载速度短格式 ("1K")
+    up_str: String,        // 上传速度短格式
+}
+```
+
+### AppSettings（持久化到 settings.json）
+
+```rust
+struct AppSettings {
+    taskbar_visible: Option<bool>,   // 默认 false
+    always_on_top: Option<bool>,     // 默认 true
+    net_unit: Option<String>,        // 默认 "auto"
+}
 ```

@@ -6,6 +6,7 @@ use tauri::Manager;
 struct AppSettings {
     taskbar_visible: Option<bool>,
     always_on_top: Option<bool>,
+    net_unit: Option<String>,
 }
 
 fn settings_file_path(app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -83,4 +84,25 @@ pub fn apply_always_on_top_setting(app: &tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.set_always_on_top(enabled);
     }
+}
+
+/// 读取流量单位设置（运行时使用，无需 Tauri 命令）
+pub fn get_net_unit_runtime(app: &tauri::AppHandle) -> String {
+    read_settings(app)
+        .net_unit
+        .unwrap_or_else(|| "auto".to_string())
+}
+
+/// 获取流量单位设置
+#[tauri::command]
+pub fn get_net_unit(app: tauri::AppHandle) -> String {
+    get_net_unit_runtime(&app)
+}
+
+/// 设置流量单位
+#[tauri::command]
+pub fn set_net_unit(app: tauri::AppHandle, unit: String) {
+    let mut settings = read_settings(&app);
+    settings.net_unit = Some(unit);
+    write_settings(&app, &settings);
 }

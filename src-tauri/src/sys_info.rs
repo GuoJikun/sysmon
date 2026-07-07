@@ -63,7 +63,43 @@ fn get_current_net_totals() -> (u64, u64) {
     (total_received, total_transmitted)
 }
 
-pub fn get_current_info(gpu_usage: f32) -> Result<SystemInfo, String> {
+/// 根据单位设置格式化网速（完整格式，带 /s 后缀，用于主窗口）
+fn format_speed(bytes_per_sec: f64, unit: &str) -> String {
+    match unit {
+        "kb" => format!("{:.1} KB/s", bytes_per_sec / 1024.0),
+        "mb" => format!("{:.2} MB/s", bytes_per_sec / 1_048_576.0),
+        _ => {
+            // auto
+            if bytes_per_sec < 1024.0 {
+                format!("{:.0} B/s", bytes_per_sec)
+            } else if bytes_per_sec < 1_048_576.0 {
+                format!("{:.1} KB/s", bytes_per_sec / 1024.0)
+            } else {
+                format!("{:.1} MB/s", bytes_per_sec / 1_048_576.0)
+            }
+        }
+    }
+}
+
+/// 根据单位设置格式化网速（短格式，无 /s 后缀，用于任务栏窗口）
+fn format_speed_short(bytes_per_sec: f64, unit: &str) -> String {
+    match unit {
+        "kb" => format!("{:.0}K", bytes_per_sec / 1024.0),
+        "mb" => format!("{:.1}M", bytes_per_sec / 1_048_576.0),
+        _ => {
+            // auto
+            if bytes_per_sec < 1024.0 {
+                format!("{:.0}B", bytes_per_sec)
+            } else if bytes_per_sec < 1_048_576.0 {
+                format!("{:.0}K", bytes_per_sec / 1024.0)
+            } else {
+                format!("{:.1}M", bytes_per_sec / 1_048_576.0)
+            }
+        }
+    }
+}
+
+pub fn get_current_info(gpu_usage: f32, net_unit: &str) -> Result<SystemInfo, String> {
     let mut sys = get_sys().lock().unwrap();
     sys.refresh_specifics(
         RefreshKind::nothing()
@@ -99,12 +135,19 @@ pub fn get_current_info(gpu_usage: f32) -> Result<SystemInfo, String> {
         gpu: gpu_usage,
         net_down,
         net_up,
+        net_down_str: format_speed(net_down, net_unit),
+        net_up_str: format_speed(net_up, net_unit),
     })
 }
 
-pub fn get_net_speed_info() -> Result<NetSpeedInfo, String> {
+pub fn get_net_speed_info(net_unit: &str) -> Result<NetSpeedInfo, String> {
     let (down, up) = compute_net_speed();
-    Ok(NetSpeedInfo { down, up })
+    Ok(NetSpeedInfo {
+        down,
+        up,
+        down_str: format_speed_short(down, net_unit),
+        up_str: format_speed_short(up, net_unit),
+    })
 }
 
 /// 增量计算网速：当前累计 - 上次累计 / 时间间隔

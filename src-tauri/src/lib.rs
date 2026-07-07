@@ -8,8 +8,39 @@ mod tray;
 use std::time::Duration;
 
 use tauri::Emitter;
+use tauri::Manager;
 use tauri::async_runtime::spawn;
 use tokio::time::interval;
+
+#[cfg(target_os = "windows")]
+fn set_main_window_rounded_region(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    let Ok(hwnd) = window.hwnd() else {
+        eprintln!("Failed to get main window HWND");
+        return;
+    };
+
+    let mut rect = RECT::default();
+    if unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
+        eprintln!("Failed to get main window rect");
+        return;
+    }
+
+    let width = rect.right - rect.left;
+    let height = rect.bottom - rect.top;
+
+    // 10px corner radius => 20x20 ellipse
+    let region = unsafe { CreateRoundRectRgn(0, 0, width + 1, height + 1, 16, 16) };
+    if region.is_invalid() {
+        eprintln!("Failed to create rounded window region");
+        return;
+    }
+
+    unsafe { SetWindowRgn(hwnd, Some(region), true) };
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,7 +50,9 @@ pub fn run() {
             settings::get_taskbar_visible,
             settings::set_taskbar_visible,
             settings::get_always_on_top,
-            settings::set_always_on_top
+            settings::set_always_on_top,
+            settings::get_net_unit,
+            settings::set_net_unit
         ])
         .setup(|app| {
             // 1. 初始化系统信息采集器
@@ -42,7 +75,13 @@ pub fn run() {
             // 6. 应用窗口置顶设置
             settings::apply_always_on_top_setting(app.handle());
 
-            // 7. 启动后台数据采集 + 推送定时器
+            // 7. 主窗口应用圆角区域（Windows 透明无边框窗口需要 Win32 区域裁剪）
+            #[cfg(target_os = "windows")]
+            if let Some(main_window) = app.get_webview_window("main") {
+                set_main_window_rounded_region(&main_window);
+            }
+
+            // 8. 启动后台数据采集 + 推送定时器
             start_data_push_timer(app.handle().clone());
 
             // 8. 启动任务栏重定位定时器
@@ -79,12 +118,13 @@ fn start_data_push_timer(app_handle: tauri::AppHandle) {
             tick.tick().await;
 
             let gpu_usage = gpu::get_gpu_usage();
+            let net_unit = settings::get_net_unit_runtime(&app_handle);
 
-            if let Ok(info) = sys_info::get_current_info(gpu_usage) {
+            if let Ok(info) = sys_info::get_current_info(gpu_usage, &net_unit) {
                 let _ = app_handle.emit_to("main", "sys-info", info);
             }
 
-            if let Ok(net) = sys_info::get_net_speed_info() {
+            if let Ok(net) = sys_info::get_net_speed_info(&net_unit) {
                 let _ = app_handle.emit_to("taskbar", "net-speed", net);
             }
         }

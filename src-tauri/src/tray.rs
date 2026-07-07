@@ -50,7 +50,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         WebviewUrl::App("settings.html".into()),
                     )
                     .title("设置")
-                    .inner_size(300.0, 240.0)
+                    .inner_size(800.0, 600.0)
                     .resizable(false)
                     .center()
                     .skip_taskbar(true)

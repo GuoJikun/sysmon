@@ -9,10 +9,14 @@ pub struct SystemInfo {
     pub gpu: f32,
     pub net_down: f64,
     pub net_up: f64,
+    pub net_down_str: String,
+    pub net_up_str: String,
 }
 
 #[derive(Clone, Serialize)]
 pub struct NetSpeedInfo {
     pub down: f64,
     pub up: f64,
+    pub down_str: String,
+    pub up_str: String,
 }

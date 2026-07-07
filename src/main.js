@@ -11,20 +11,10 @@ const unlisten = await listen('sys-info', (event) => {
   // 内存
   document.getElementById('mem-value').textContent = `${data.mem_pct.toFixed(1)}%`;
 
-  // 网速
-  document.getElementById('net-down-value').textContent = formatSpeed(data.net_down);
-  document.getElementById('net-up-value').textContent = formatSpeed(data.net_up);
+  // 网速（Rust 端已格式化）
+  document.getElementById('net-down-value').textContent = data.net_down_str;
+  document.getElementById('net-up-value').textContent = data.net_up_str;
 });
-
-function formatSpeed(bytesPerSec) {
-  if (bytesPerSec < 1024) {
-    return `${bytesPerSec.toFixed(0)} B/s`;
-  } else if (bytesPerSec < 1048576) {
-    return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
-  } else {
-    return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
-  }
-}
 
 // 主题同步：监听设置窗口的主题变更事件
 await listen('theme-changed', (event) => {

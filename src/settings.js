@@ -61,3 +61,21 @@ function updateTopButtons(enabled) {
     btn.classList.toggle('active', btn.dataset.topValue === String(enabled));
   });
 }
+
+// 流量单位设置
+const netUnit = await invoke('get_net_unit');
+updateUnitButtons(netUnit);
+
+document.querySelectorAll('[data-unit-value]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const unit = btn.dataset.unitValue;
+    invoke('set_net_unit', { unit });
+    updateUnitButtons(unit);
+  });
+});
+
+function updateUnitButtons(currentUnit) {
+  document.querySelectorAll('[data-unit-value]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.unitValue === currentUnit);
+  });
+}
