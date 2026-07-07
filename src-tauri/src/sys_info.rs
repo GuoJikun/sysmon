@@ -99,7 +99,7 @@ fn format_speed_short(bytes_per_sec: f64, unit: &str) -> String {
     }
 }
 
-pub fn get_current_info(gpu_usage: f32, net_unit: &str) -> Result<SystemInfo, String> {
+pub fn get_current_info(gpu_usage: f32, net_down: f64, net_up: f64, net_unit: &str) -> Result<SystemInfo, String> {
     let mut sys = get_sys().lock().unwrap();
     sys.refresh_specifics(
         RefreshKind::nothing()
@@ -124,9 +124,6 @@ pub fn get_current_info(gpu_usage: f32, net_unit: &str) -> Result<SystemInfo, St
         0.0
     };
 
-    // 网速
-    let (net_down, net_up) = compute_net_speed();
-
     Ok(SystemInfo {
         cpu: cpu_avg,
         mem_used,
@@ -140,18 +137,17 @@ pub fn get_current_info(gpu_usage: f32, net_unit: &str) -> Result<SystemInfo, St
     })
 }
 
-pub fn get_net_speed_info(net_unit: &str) -> Result<NetSpeedInfo, String> {
-    let (down, up) = compute_net_speed();
-    Ok(NetSpeedInfo {
+pub fn get_net_speed_info(down: f64, up: f64, net_unit: &str) -> NetSpeedInfo {
+    NetSpeedInfo {
         down,
         up,
         down_str: format_speed_short(down, net_unit),
         up_str: format_speed_short(up, net_unit),
-    })
+    }
 }
 
 /// 增量计算网速：当前累计 - 上次累计 / 时间间隔
-fn compute_net_speed() -> (f64, f64) {
+pub fn compute_net_speed() -> (f64, f64) {
     // 1. 刷新网卡数据
     let mut networks = get_networks().lock().unwrap();
     networks.refresh(true);

@@ -1,5 +1,6 @@
 mod commands;
 mod gpu;
+mod logger;
 mod settings;
 mod sys_info;
 mod taskbar_window;
@@ -52,15 +53,33 @@ pub fn run() {
             settings::get_always_on_top,
             settings::set_always_on_top,
             settings::get_net_unit,
-            settings::set_net_unit
+            settings::set_net_unit,
+            settings::get_log_level,
+            settings::set_log_level,
+            taskbar_window::embed_taskbar_window,
         ])
         .setup(|app| {
+            // 0. 初始化日志（必须在最前，后续代码才能用 log::info! 等宏）
+            let log_level = app
+                .path()
+                .app_config_dir()
+                .ok()
+                .and_then(|_dir| {
+                    settings::read_settings(&app.handle())
+                        .log_level
+                        .map(|s| logger::level_from_str(&s))
+                })
+                .unwrap_or(log::LevelFilter::Info);
+            if let Some(config_dir) = app.path().app_config_dir().ok() {
+                logger::init(log_level, &config_dir);
+            }
+
             // 1. 初始化系统信息采集器
             sys_info::init();
 
             // 2. 初始化 GPU 监控（PDH）
             if let Err(e) = gpu::init_gpu_monitor() {
-                eprintln!("GPU monitor init failed: {}", e);
+                log::warn!("GPU monitor init failed: {}", e);
             }
 
             // 3. 创建系统托盘
@@ -84,8 +103,7 @@ pub fn run() {
             // 8. 启动后台数据采集 + 推送定时器
             start_data_push_timer(app.handle().clone());
 
-            // 8. 启动任务栏重定位定时器
-            taskbar_window::start_taskbar_reposition_timer(app.handle().clone());
+            // 9. 任务栏重定位定时器由 embed_taskbar_window 命令在前端加载后启动
 
             Ok(())
         })
@@ -120,13 +138,15 @@ fn start_data_push_timer(app_handle: tauri::AppHandle) {
             let gpu_usage = gpu::get_gpu_usage();
             let net_unit = settings::get_net_unit_runtime(&app_handle);
 
-            if let Ok(info) = sys_info::get_current_info(gpu_usage, &net_unit) {
+            // 网速只计算一次，同时供主窗口和任务栏窗口使用
+            let (net_down, net_up) = sys_info::compute_net_speed();
+
+            if let Ok(info) = sys_info::get_current_info(gpu_usage, net_down, net_up, &net_unit) {
                 let _ = app_handle.emit_to("main", "sys-info", info);
             }
 
-            if let Ok(net) = sys_info::get_net_speed_info(&net_unit) {
-                let _ = app_handle.emit_to("taskbar", "net-speed", net);
-            }
+            let net = sys_info::get_net_speed_info(net_down, net_up, &net_unit);
+            let _ = app_handle.emit_to("taskbar", "net-speed", net);
         }
     });
 }

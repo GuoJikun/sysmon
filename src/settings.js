@@ -79,3 +79,21 @@ function updateUnitButtons(currentUnit) {
     btn.classList.toggle('active', btn.dataset.unitValue === currentUnit);
   });
 }
+
+// 日志等级设置
+const logLevel = await invoke('get_log_level');
+updateLogButtons(logLevel);
+
+document.querySelectorAll('[data-log-value]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const level = btn.dataset.logValue;
+    invoke('set_log_level', { level });
+    updateLogButtons(level);
+  });
+});
+
+function updateLogButtons(currentLevel) {
+  document.querySelectorAll('[data-log-value]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.logValue === currentLevel);
+  });
+}

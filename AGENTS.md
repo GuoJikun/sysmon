@@ -89,7 +89,7 @@ Windows API (sysinfo crate + PDH)
 | 窗口 label | 用途 | 创建方式 | 尺寸 | 关闭行为 |
 |------------|------|----------|------|----------|
 | `main` | 悬浮监控面板 | tauri.conf.json 静态配置 | 230×46 | 隐藏不退出 |
-| `taskbar` | 任务栏网速条 | taskbar_window.rs 动态创建 | 120×32 | 阻止关闭 |
+| `taskbar` | 任务栏网速条 | taskbar_window.rs 动态创建 | 120×28 | 阻止关闭 |
 | `settings` | 设置面板 | tray.rs 动态创建 | 800×600 | 允许正常关闭 |
 
 ### 主窗口特性
