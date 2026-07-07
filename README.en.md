@@ -1,6 +1,6 @@
 # SysMon — Windows System Monitor
 
-[**English**](README.en.md) | [中文](README.md)
+[中文](README.md) | [**English**](README.en.md)
 
 A lightweight Windows desktop system monitor with a floating always-on-top panel showing CPU, memory, and network speed, plus a taskbar-embedded network speed bar.
 
@@ -8,7 +8,6 @@ A lightweight Windows desktop system monitor with a floating always-on-top panel
 
 - **Floating Monitor Panel** — Borderless always-on-top window displaying CPU/memory/network in a compact layout, no taskbar space used
 - **Taskbar Network Speed Bar** — Embedded into the Windows taskbar via Win32 API, showing real-time upload/download speeds
-- **GPU Monitoring** — GPU 3D engine utilization via Windows PDH API
 - **System Tray** — Runs in the background with a right-click menu to show the main window, open settings, or exit
 - **Theme Switching** — Light/dark dual themes, managed from the settings window
 - **Persistent Settings** — Taskbar visibility, window always-on-top, and other preferences are saved automatically
@@ -18,7 +17,7 @@ A lightweight Windows desktop system monitor with a floating always-on-top panel
 | Component | Technology |
 |-----------|------------|
 | Desktop Framework | Tauri v2 |
-| Backend | Rust + sysinfo + Windows API (PDH, Win32) |
+| Backend | Rust + sysinfo + Windows API (Win32) |
 | Frontend | Vanilla HTML / CSS / JS (no framework) |
 | Async Runtime | Tokio |
 
@@ -38,7 +37,6 @@ sysmon/
     └── src/
         ├── lib.rs          # App entry, event system, timers
         ├── sys_info.rs     # CPU/memory/network collection
-        ├── gpu.rs          # GPU monitoring (PDH API)
         ├── tray.rs         # System tray
         ├── taskbar_window.rs # Taskbar window embedding
         ├── commands.rs     # Data structures
@@ -107,7 +105,7 @@ Settings are saved to `%APPDATA%\com.sysmon.app\settings.json`.
 ## Architecture Overview
 
 ```
-Windows API (sysinfo + PDH)
+Windows API (sysinfo)
         │
    Rust Backend (1.5s polling)
         │
