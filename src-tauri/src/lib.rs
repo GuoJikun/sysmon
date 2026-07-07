@@ -1,5 +1,6 @@
 mod commands;
 mod gpu;
+mod settings;
 mod sys_info;
 mod taskbar_window;
 mod tray;
@@ -14,6 +15,12 @@ use tokio::time::interval;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![
+            settings::get_taskbar_visible,
+            settings::set_taskbar_visible,
+            settings::get_always_on_top,
+            settings::set_always_on_top
+        ])
         .setup(|app| {
             // 1. 初始化系统信息采集器
             sys_info::init();
@@ -29,10 +36,16 @@ pub fn run() {
             // 4. 创建任务栏内嵌小窗口
             taskbar_window::create_taskbar_window(app)?;
 
-            // 5. 启动后台数据采集 + 推送定时器
+            // 5. 应用任务栏显示设置（用户可能在设置中关闭了）
+            settings::apply_taskbar_setting(app.handle());
+
+            // 6. 应用窗口置顶设置
+            settings::apply_always_on_top_setting(app.handle());
+
+            // 7. 启动后台数据采集 + 推送定时器
             start_data_push_timer(app.handle().clone());
 
-            // 6. 启动任务栏重定位定时器
+            // 8. 启动任务栏重定位定时器
             taskbar_window::start_taskbar_reposition_timer(app.handle().clone());
 
             Ok(())
@@ -40,14 +53,16 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // 阻止窗口真正关闭
-                    api.prevent_close();
                     let label = window.label();
                     if label == "main" {
                         // 主窗口关闭 → 隐藏而非退出（托盘后台运行）
+                        api.prevent_close();
                         window.hide().ok();
+                    } else if label == "taskbar" {
+                        // taskbar 窗口也阻止关闭
+                        api.prevent_close();
                     }
-                    // taskbar 窗口也阻止关闭（不应被用户关闭）
+                    // settings 窗口允许正常关闭
                 }
                 _ => {}
             }

@@ -21,3 +21,8 @@ function formatSpeedShort(bytesPerSec) {
 // 同步主题（与主窗口保持一致）
 const savedTheme = localStorage.getItem('theme') || 'light';
 document.body.setAttribute('data-theme', savedTheme);
+
+// 监听设置窗口的主题变更事件，实时同步
+await listen('theme-changed', (event) => {
+  document.body.setAttribute('data-theme', event.payload);
+});

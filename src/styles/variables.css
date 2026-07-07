@@ -5,8 +5,6 @@
   --text-color: #333333;
   --label-color: #888888;
   --accent-color: #4a90d9;
-  --bar-bg: #e0e0e0;
-  --bar-fill-color: #4a90d9;
   --border-color: #dddddd;
 }
 
@@ -16,7 +14,5 @@
   --text-color: #e0e0e0;
   --label-color: #999999;
   --accent-color: #6ab0f3;
-  --bar-bg: #404040;
-  --bar-fill-color: #6ab0f3;
   --border-color: #555555;
 }

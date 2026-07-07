@@ -7,17 +7,9 @@ const unlisten = await listen('sys-info', (event) => {
 
   // CPU
   document.getElementById('cpu-value').textContent = `${data.cpu.toFixed(1)}%`;
-  document.getElementById('cpu-bar').style.width = `${data.cpu}%`;
 
   // 内存
-  const memUsedGB = (data.mem_used / 1073741824).toFixed(1);
-  const memTotalGB = (data.mem_total / 1073741824).toFixed(1);
-  document.getElementById('mem-value').textContent = `${memUsedGB} GB / ${memTotalGB} GB`;
-  document.getElementById('mem-bar').style.width = `${data.mem_pct}%`;
-
-  // GPU
-  document.getElementById('gpu-value').textContent = `${data.gpu.toFixed(1)}%`;
-  document.getElementById('gpu-bar').style.width = `${data.gpu}%`;
+  document.getElementById('mem-value').textContent = `${data.mem_pct.toFixed(1)}%`;
 
   // 网速
   document.getElementById('net-down-value').textContent = formatSpeed(data.net_down);
@@ -34,13 +26,11 @@ function formatSpeed(bytesPerSec) {
   }
 }
 
-// 主题切换
-document.getElementById('theme-toggle').addEventListener('click', () => {
-  const current = document.documentElement.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  document.body.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
+// 主题同步：监听设置窗口的主题变更事件
+await listen('theme-changed', (event) => {
+  const theme = event.payload;
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
 });
 
 // 启动时恢复主题

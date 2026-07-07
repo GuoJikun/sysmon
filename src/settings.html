@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles/variables.css" />
+    <link rel="stylesheet" href="styles/public.css" />
+    <link rel="stylesheet" href="styles/settings.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>设置</title>
+    <script type="module" src="settings.js" defer></script>
+  </head>
+  <body data-theme="light">
+    <div class="settings-panel">
+      <div class="setting-item">
+        <span class="setting-label">主题</span>
+        <div class="theme-options">
+          <button class="theme-option" data-theme-value="light">☀ 浅色</button>
+          <button class="theme-option" data-theme-value="dark">🌙 深色</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">任务栏显示</span>
+        <div class="theme-options">
+          <button class="theme-option" data-taskbar-value="true">显示</button>
+          <button class="theme-option" data-taskbar-value="false">隐藏</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">窗口置顶</span>
+        <div class="theme-options">
+          <button class="theme-option" data-top-value="true">开启</button>
+          <button class="theme-option" data-top-value="false">关闭</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
