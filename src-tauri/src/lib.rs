@@ -60,6 +60,7 @@ pub fn run() {
             taskbar_window::embed_taskbar_window,
             tray_popup_window::tray_popup_action,
             tray_popup_window::hide_tray_popup_cmd,
+            tray_popup_window::show_popup_at_cursor,
             tray_popup_window::is_main_visible,
             tray_popup_window::toggle_taskbar_visible,
         ])
@@ -89,6 +90,10 @@ pub fn run() {
 
             // 3. 创建系统托盘
             tray::setup_tray(app)?;
+
+            // 3.5 预创建托盘弹窗窗口（隐藏），让 WebView2 提前完成初始化
+            // 避免用户首次右键主窗口时因 WebView2 异步初始化导致的显示失败
+            tray_popup_window::precreate(app.handle());
 
             // 4. 创建任务栏内嵌小窗口
             taskbar_window::create_taskbar_window(app)?;
