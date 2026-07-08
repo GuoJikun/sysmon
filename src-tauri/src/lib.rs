@@ -5,6 +5,7 @@ mod settings;
 mod sys_info;
 mod taskbar_window;
 mod tray;
+mod tray_popup_window;
 
 use std::time::Duration;
 
@@ -57,6 +58,10 @@ pub fn run() {
             settings::get_log_level,
             settings::set_log_level,
             taskbar_window::embed_taskbar_window,
+            tray_popup_window::tray_popup_action,
+            tray_popup_window::hide_tray_popup_cmd,
+            tray_popup_window::is_main_visible,
+            tray_popup_window::toggle_taskbar_visible,
         ])
         .setup(|app| {
             // 0. 初始化日志（必须在最前，后续代码才能用 log::info! 等宏）
@@ -118,8 +123,12 @@ pub fn run() {
                     } else if label == "taskbar" {
                         // taskbar 窗口也阻止关闭
                         api.prevent_close();
+                    } else if label == "settings" {
+                        // settings 窗口关闭 → 隐藏而非销毁（保留 webview 状态）
+                        api.prevent_close();
+                        window.hide().ok();
                     }
-                    // settings 窗口允许正常关闭
+                    // tray-popup 窗口允许正常关闭
                 }
                 _ => {}
             }

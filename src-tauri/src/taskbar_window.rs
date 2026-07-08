@@ -246,6 +246,10 @@ fn start_taskbar_reposition_timer(app_handle: tauri::AppHandle) {
             }
             if let Some(win) = app_handle.get_webview_window("taskbar") {
                 if let Ok(hwnd) = win.hwnd() {
+                    // 确保窗口可见（处理用户提前开启显示、嵌入稍后完成的竞态）
+                    unsafe {
+                        let _ = ShowWindow(hwnd, SW_SHOWNA);
+                    }
                     reposition(hwnd);
                 }
             }

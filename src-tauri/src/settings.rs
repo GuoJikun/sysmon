@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -68,6 +68,9 @@ pub fn set_taskbar_visible(app: tauri::AppHandle, visible: bool) {
             }
         }
     }
+
+    // 通知所有窗口设置已变更（同步托盘弹窗和主窗口的对号状态）
+    let _ = app.emit("settings-changed", serde_json::json!({ "taskbar_visible": visible }));
 }
 
 /// 启动时应用任务栏显示设置

@@ -1,74 +1,58 @@
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::Menu,
     tray::{MouseButton, MouseButtonState, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder,
+    Manager,
 };
 
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let show_item = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
-    let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-
-    let menu = Menu::with_items(app, &[&show_item, &settings_item, &quit_item])?;
-
-    // 获取 Tauri 配置（tauri.conf.json trayIcon）创建的托盘图标
     let tray = app
         .tray_by_id("main")
         .ok_or("Tray icon 'main' not found")?;
 
-    tray.set_menu(Some(menu))?;
+    // 设置空菜单（不显示任何项），右键事件由 on_tray_icon_event 处理
+    let empty_menu = Menu::with_items(app, &[])?;
+    tray.set_menu(Some(empty_menu))?;
     tray.set_tooltip(Some("SysMon - 系统监控"))?;
     tray.set_show_menu_on_left_click(false)?;
 
-    tray.on_menu_event(|app, event| match event.id.as_ref() {
-        "show" => {
-            if let Some(win) = app.get_webview_window("main") {
-                win.show().ok();
-                win.set_focus().ok();
-            }
-        }
-        "settings" => {
-            if let Some(win) = app.get_webview_window("settings") {
-                win.show().ok();
-                win.set_focus().ok();
-            } else {
-                let _ = WebviewWindowBuilder::new(
-                    app,
-                    "settings",
-                    WebviewUrl::App("settings.html".into()),
-                )
-                .title("设置")
-                .inner_size(800.0, 600.0)
-                .resizable(false)
-                .center()
-                .skip_taskbar(true)
-                .build();
-            }
-        }
-        "quit" => {
-            // 清理任务栏窗口（回滚 MSTaskSwWClass 等）
-            if let Some(win) = app.get_webview_window("taskbar") {
-                let hwnd_value = win.hwnd().unwrap_or_default().0 as isize;
-                crate::taskbar_window::cleanup_taskbar_window(hwnd_value);
-            }
-            crate::gpu::cleanup_gpu_monitor();
-            app.exit(0);
-        }
-        _ => {}
-    });
-
     tray.on_tray_icon_event(|tray, event| {
-        if let TrayIconEvent::Click {
-            button: MouseButton::Left,
-            button_state: MouseButtonState::Up,
-            ..
-        } = event
-        {
-            let app = tray.app_handle();
-            if let Some(win) = app.get_webview_window("main") {
-                win.show().ok();
-                win.set_focus().ok();
+        let app = tray.app_handle();
+
+        match event {
+            // 左键：显示主窗口
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } => {
+                crate::tray_popup_window::hide_tray_popup(app);
+                if let Some(win) = app.get_webview_window("main") {
+                    win.show().ok();
+                    win.set_focus().ok();
+                }
             }
+            // 右键：弹出自定义窗口
+            TrayIconEvent::Click {
+                button: MouseButton::Right,
+                button_state: MouseButtonState::Up,
+                position,
+                rect,
+                ..
+            } => {
+                // 从 rect 枚举中提取托盘图标的屏幕边界（物理像素）
+                let (icon_x, icon_y, icon_w) = match (rect.position, rect.size) {
+                    (
+                        tauri::Position::Physical(pos),
+                        tauri::Size::Physical(size),
+                    ) => (pos.x as f64, pos.y as f64, size.width as f64),
+                    _ => (position.x, position.y, 0.0),
+                };
+
+                crate::tray_popup_window::show_tray_popup(
+                    app, icon_x, icon_y, icon_w, position.x, position.y,
+                );
+            }
+            _ => {}
         }
     });
 

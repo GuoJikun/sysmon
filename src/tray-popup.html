@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles/variables.css" />
+    <link rel="stylesheet" href="styles/public.css" />
+    <link rel="stylesheet" href="styles/tray-popup.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SysMon Tray</title>
+    <script type="module" src="tray-popup.js" defer></script>
+  </head>
+  <body data-theme="light">
+    <div class="popup-menu">
+      <div class="menu-item" data-action="show">
+        <span class="check"></span>
+        <span class="label">显示主窗口</span>
+      </div>
+      <div class="menu-item" data-action="taskbar">
+        <span class="check"></span>
+        <span class="label">任务栏显示</span>
+      </div>
+      <div class="menu-item" data-action="settings">
+        <span class="icon"><svg viewBox="0 0 16 16"><path d="M8 3.5L11 2.8L11.9 5.8L14 8L11.9 10.2L11 13.2L8 12.5L5 13.2L4.1 10.2L2 8L4.1 5.8L5 2.8Z"/><circle cx="8" cy="8" r="2"/></svg></span>
+        <span class="label">设置</span>
+      </div>
+      <div class="separator"></div>
+      <div class="menu-item" data-action="quit">
+        <span class="icon"><svg viewBox="0 0 16 16"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></span>
+        <span class="label">退出</span>
+      </div>
+    </div>
+  </body>
+</html>
